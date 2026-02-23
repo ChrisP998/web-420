@@ -1,26 +1,35 @@
 const request = require('supertest');
-const app = require('../src/app.js');
-const books = require('../database/books.js');
+const app = require('../src/app');
+
 
 describe('Chapter [Number]: API Tests', () => {
+  // Test case a: Should return an array of books.
+  it('Should return an array of books', async() => {
+    const res = await request(app).get('/api/books');
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toBeInstanceOf(Array);
 
-  it('GET /api/books - should return an array of books', async () => {
-    const response = await request(app).get('/database/books');
-    expect(response.statusCode).toEqual(200);
-    expect(response.body).toBeInstanceOf(Array);
-    expect(response.body.length).toBeGreaterThan(0)
+    res.body.forEach((books) => {
+      expect(books).toHaveProperty("id");
+      expect(books).toHaveProperty("title");
+      expect(books).toHaveProperty("author");
+    });
   });
 
-  test('GET /api/books/:id - should return a single book', async () => {
-      const response = await request(app).get('/database/books/1');
-      expect(response.statusCode).toEqual(200);
-      expect(response.body).toHaveProperty('id');
-      expect(response.body.id).toEqual(1);
-    });
+  // Test case b: Should return a single book.
+  it('Should return a single book', async() => {
+    const res = await request(app).get('/api/books/1');
 
-  test('GET /api/books/:id - should return 400 if id is not a number', async () => {
-      const response = await request(app).get('/database/books/abc');
-      expect(response.statusCode).toEqual(400);
-      expect(response.body).toHaveProperty('error', 'ID must be a number');
-    });
+    expect(res.statusCode).toEqual(200);
+    expect(res.body).toHaveProperty('id', 1);
+    expect(res.body).toHaveProperty('title', 'The Fellowship of the Ring');
+    expect(res.body).toHaveProperty('author', 'J.R.R. Tolkien');
+  });
+
+  // Test case c: Should return a 400 error if the id is not a number.
+  it("Should return a 400 error if the id is not a number", async() => {
+    const res = await request(app).get('/api/books/e');
+    expect(res.statusCode).toEqual(400);
+    expect(res.body.message).toEqual("Input must be a number");
+  });
 });

@@ -7,7 +7,9 @@
 
 const express = require('express');
 const app = express();
+const createError = require("http-errors");
 const port = 3000;
+const books = require("../database/books");
 
 app.get('/', (req, res) => {
   res.status(200).send(`
@@ -35,25 +37,57 @@ app.get('/', (req, res) => {
   `);
 });
 
-app.use((err, req, res, next) => {
-  res.status(err.status || 500,);
-
-  const errorDetails = {
-    status: err.status || 500,
-    message: err.message,
-  };
-
-  if (process.env.NODE_ENV === 'development') {
-    errorDetails.stack = err.stack;
+app.get('/api/books', async(req, res, next) => {
+  try {
+    const allBooks = await books.find();
+    console.log('All Books:', allBooks);
+    res.send(allBooks);
+  } catch (err) {
+    console.error('Error:', err.message);
+    next(err);
   }
+  try {
+    const book = await books.findOne({id: Number(req.params.id)});
+    console.log("Book", book);
+    res.send(book);
+  } catch (err) {
+    console.error("Error:", err.message);
+    next(err)
+  }
+  });
 
-  res.json(errorDetails);
+
+
+app.get('/api/books/:id', async(req, res, next) => {
+  try {
+    let {id} = req.params;
+    id = parseInt(id);
+    if (isNaN(id)) {
+      return next(createError(400, 'Input must be a number'));
+    }
+
+    const oneBook = await books.findOne({id: id});
+
+    console.log("Book:", oneBook);
+    res.send(oneBook);
+  } catch (err) {
+    console.error("Error:", err.message);
+    next(err);
+  }
 });
 
-app.use((req, res, next) => {
-  const error = new Error(`Not Found - ${req.originalUrl}`);
-  error.status = 404;
-  next(error);
+app.use(function(req, res, next) {
+  next(createError(404));
+});
+
+app.use(function(err, req, res, next) {
+  res.status(err.status || 500);
+  res.json({
+    type: 'error',
+    status: err.status,
+    message: err.message,
+    stack: req.app.get('env') === 'development' ? err.stack : undefined
+  });
 });
 
 module.exports = app
