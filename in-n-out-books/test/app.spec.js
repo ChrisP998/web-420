@@ -60,4 +60,44 @@ describe('Chapter [Number]: API Tests', () => {
 
     expect(res.statusCode).toBe(204);
   });
+
+  //Week 6 tests
+  // Test case a: Should update a book and return a 204 status code.
+  it('Should update a book and return a 204 status code', async() => {
+    const res = await request(app).put('/api/books/1').send({
+      id: 1,
+      title: 'The Odyssey',
+      author: 'Homer',
+    });
+
+    expect(res.statusCode).toEqual(204);
+  });
+
+  // Test case b: Should return a 400 status code when using a non-numeric id
+  it('Should return a 400 status code when using a non-numeric id', async() => {
+    const res = await request(app).put('/api/books/foo').send({
+      title: 'Test Book',
+      author: 'Test Author',
+    });
+
+    expect(res.statusCode).toEqual(400);
+    expect(res.body.message).toEqual('Input must be a number');
+  });
+
+  // Test case c: Should return a 400 status code when updating a book with a missing title.
+  it('Should return a 400 status code when updating a book with a missing title', async() => {
+    const res = await request(app).put('/api/books/1').send({
+      title: 'Test Title',
+    });
+    expect(res.statusCode).toEqual(400);
+    expect(res.body.message).toEqual('Bad Request')
+
+    const res2 = await request(app).put('/api/books/1').send({
+      title: 'Test Title',
+      author: 'Test Author',
+      extraKay: 'extra',
+    });
+    expect(res2.statusCode).toEqual(400);
+    expect(res2.body.message).toEqual('Bad Request');
+  });
 });
