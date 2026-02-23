@@ -3,6 +3,7 @@ const app = require('../src/app');
 
 
 describe('Chapter [Number]: API Tests', () => {
+  // Week 4 tests
   // Test case a: Should return an array of books.
   it('Should return an array of books', async() => {
     const res = await request(app).get('/api/books');
@@ -31,5 +32,32 @@ describe('Chapter [Number]: API Tests', () => {
     const res = await request(app).get('/api/books/e');
     expect(res.statusCode).toEqual(400);
     expect(res.body.message).toEqual("Input must be a number");
+  });
+
+  //Week 5 tests
+  // Test case a: Should return a 201 status code when adding a new book.
+  it('Should return a 201 status code when adding a new book', async() => {
+    const res = await request(app).post('/api/books').send({
+      id: 6,
+      title: 'The Odyssey',
+      author: 'Homer',
+    });
+    expect(res.statusCode).toEqual(201);
+  });
+
+  // Test case b: Should return a 400 status code when adding a new book with missing title.
+  it('Should return a 400 status code when adding a new book with missing title', async() => {
+    const res = await request(app).post('/api/books').send({
+      author: 'Ernest Hemingway',
+    });
+    expect(res.statusCode).toEqual(400);
+    expect(res.body.message).toEqual('Title and Author are required');
+  });
+
+  // Test case c: Should return a 204 status code when deleting a book.
+  it('Should return a 204 status code when deleting a book', async() => {
+    const res = await request(app).delete('/api/books/5');
+
+    expect(res.statusCode).toBe(204);
   });
 });

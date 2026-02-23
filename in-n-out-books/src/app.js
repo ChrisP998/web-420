@@ -11,6 +11,9 @@ const createError = require("http-errors");
 const port = 3000;
 const books = require("../database/books");
 
+app.use(express.json());
+app.use(express.urlencoded({ extended: true}));
+
 app.get('/', (req, res) => {
   res.status(200).send(`
     <!DOCTYPE html>
@@ -56,8 +59,6 @@ app.get('/api/books', async(req, res, next) => {
   }
   });
 
-
-
 app.get('/api/books/:id', async(req, res, next) => {
   try {
     let {id} = req.params;
@@ -72,6 +73,37 @@ app.get('/api/books/:id', async(req, res, next) => {
     res.send(oneBook);
   } catch (err) {
     console.error("Error:", err.message);
+    next(err);
+  }
+});
+
+app.delete('/api/books/:id', async(req, res, next) => {
+  try {
+    const {id} = req.params;
+    const result = await books.deleteOne({id: parseInt(id)});
+    console.log('Result:', result);
+    res.status(204).send();
+  } catch (err) {
+    if (err.message === "No matching item found") {
+      return next(createError(404, 'Book not found'));
+    }
+  }
+});
+
+app.post('/api/books', async(req, res, next) => {
+  try {
+    const {title, author} = req.body;
+
+    if (!title || !author) {
+      return res.status(400).send({ message: 'Title and Author are required'});
+    }
+
+    const newBook = { title, author, createdAt: new Date()};
+    const result = await books.insertOne(newBook);
+    console.log('Result:', result);
+    res.status(201).send({ id: result.insertedId});
+  } catch (err) {
+    console.error('Error:', err.message);
     next(err);
   }
 });
