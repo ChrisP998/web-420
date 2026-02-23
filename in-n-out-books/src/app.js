@@ -6,40 +6,60 @@
 */
 
 const express = require('express');
-const app = express()
+const app = express();
+const port = 3000;
 
 app.get('/', (req, res) => {
-  res.send(`
-    <html>
-      <head>
-        <title>In-N-Out Books</title>
-        <style>
-          body { font-family: sans-serif; text-align: center; padding: 25px;}
-          h1 { color: red}
-          p { color: black}
-        </style>
-      </head>
-      <body>
-        <h1>Welcome to In-N-Out Books!</h1>
-        <p>Feel free to browse our collection!</p>
-      </body>
-    </html>`);
-});
-
-app.use((req, res, next) => {
-  res.status(404).send('Page Not Found');
+  res.status(200).send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>In-N-Out Books</title>
+      <style>
+        body { font-family: sans-serif; margin: 40px; background-color: #f4f4f4; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #333; }
+        p { color: #666; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>Welcome to In-N-Out Books</h1>
+        <p>Your one-stop shop for all your reading needs!</p>
+        <p>More features coming soon...</p>
+      </div>
+    </body>
+    </html>
+  `);
 });
 
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  res.status(err.status || 500,);
 
-  const isDevelopmentMode = process.env.NODE_ENV === 'Development Mode';
+  const errorDetails = {
+    status: err.status || 500,
+    message: err.message,
+  };
 
-  res.status(500).json({
-    status: 500,
-    message: 'Internal Server Error',
-    error: isDevelopmentMode ? err.stack : {}
-  });
+  if (process.env.NODE_ENV === 'development') {
+    errorDetails.stack = err.stack;
+  }
+
+  res.json(errorDetails);
 });
 
-module.exports = app;
+app.use((req, res, next) => {
+  const error = new Error(`Not Found - ${req.originalUrl}`);
+  error.status = 404;
+  next(error);
+});
+
+module.exports = app
+
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}/`);
+  });
+}
