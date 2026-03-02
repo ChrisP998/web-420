@@ -10,6 +10,8 @@ const app = express();
 const createError = require("http-errors");
 const port = 3000;
 const books = require("../database/books");
+const bcrypt = require('bcrypt')
+const users = require('../database/users');
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true}));
@@ -77,6 +79,34 @@ app.get('/api/books/:id', async(req, res, next) => {
   }
 });
 
+app.post('/api/login', async(req, res, next) => {
+  console.log('Request body:', req.body);
+  try {
+    const user = req.body;
+
+    const expectedKeys = ['email', 'password'];
+    const receivedKeys = Object.keys(user);
+
+    if(!receivedKeys.every(key => expectedKeys.includes(key)) || receivedKeys.length !== expectedKeys.length) {
+      console.error('Bad Request: Missing keys or extra keys', receivedKeys);
+      return next(createError(400, 'Bad Request'));
+    }
+
+    const hashedPassword = bcrypt.hashSync(user.password,10);
+
+    const newUser = await users.insertOne({
+      email: user.email,
+      password: hashedPassword,
+    });
+
+
+    res.status(200).send({user: newUser, message: 'Authentication Successful'});
+  } catch (err) {
+    console.error('Error:', err.message);
+    next(err);
+  }
+});
+
 app.delete('/api/books/:id', async(req, res, next) => {
   try {
     const {id} = req.params;
@@ -138,6 +168,8 @@ app.put('/api/books/:id', async(req, res, next) => {
     next(err);
   }
 });
+
+
 
 app.use(function(req, res, next) {
   next(createError(404));
