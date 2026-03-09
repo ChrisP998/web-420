@@ -12,6 +12,28 @@ const port = 3000;
 const books = require("../database/books");
 const bcrypt = require('bcrypt')
 const users = require('../database/users');
+const Ajv = require('ajv');
+const ajv = new Ajv({strict: false});
+
+const securityQuestionsSchema = {
+  type: "object",
+  properties: {
+    newPassword: {type: "string"},
+    securityQuestions: {
+      type: "array",
+      item: {
+        type: "object",
+        properties: {
+          answer: {type: "string"}
+        },
+        required: ["answer"],
+        additionalProperties: false
+      }
+    }
+  },
+  required: ["newPassword", "securityQuestions"],
+  additionalProperties: false
+};
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true}));
@@ -52,7 +74,7 @@ app.get('/api/books', async(req, res, next) => {
     next(err);
   }
   try {
-    const book = await books.findOne({id: Number(req.params.id)});
+    const book = await books.find({id: Number(req.params.id)});
     console.log("Book", book);
     res.send(book);
   } catch (err) {
@@ -92,15 +114,48 @@ app.post('/api/login', async(req, res, next) => {
       return next(createError(400, 'Bad Request'));
     }
 
-    const hashedPassword = bcrypt.hashSync(user.password,10);
+    const hashedPassword = await bcrypt.hash(user.password, 10);
 
-    const newUser = await users.insertOne({
-      email: user.email,
-      password: hashedPassword,
-    });
+    if(bcrypt.compareSync(req.body.password, hashedPassword)) {
+      res.status(200).send({message: 'Authentication Successful'});
+    } else {
+      return next(createError(401, 'Unauthorized'));
+    }
+
+  } catch (err) {
+    console.error('Error:', err.message);
+    next(err);
+  }
+});
+
+app.post('/api/users/:email/verify-security-question', async(req, res, next) => {
+  try {
+    const {email} = req.params;
+    const {securityQuestions, newPassword} = req.body;
 
 
-    res.status(200).send({user: newUser, message: 'Authentication Successful'});
+    const validate = ajv.compile(securityQuestionsSchema);
+    if(!validate(req.body)) {
+      return next(createError(400, 'Bad Request'));
+    }
+
+    const user = await users.findOne({email: email});
+
+    if(securityQuestions[0].answer !== user.securityQuestions[0].answer ||
+      securityQuestions[1].answer !== user.securityQuestions[1].answer ||
+      securityQuestions[2].answer !== user.securityQuestions[2].answer) {
+        console.error('Unauthorized: Security questions do not match');
+        return next(createError(201, 'Unauthorized'));
+      }
+
+
+    const hashedPassword = bcrypt.hashSync(newPassword, 10);
+    user.password = hashedPassword;
+
+    const result = await users.updateOne({email: email}, {$set: {password: hashedPassword}});
+
+    console.log('Result:', result);
+    res.status(200).send({message: 'Security questions successfully answered', user: user});
   } catch (err) {
     console.error('Error:', err.message);
     next(err);
