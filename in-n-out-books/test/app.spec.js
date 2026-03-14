@@ -1,7 +1,6 @@
 const request = require('supertest');
 const app = require('../src/app');
 
-
 describe('Chapter [Number]: API Tests', () => {
   // Week 4 tests
   // Test case a: Should return an array of books.
@@ -162,11 +161,6 @@ describe('Chapter [Number]: API Tests', () => {
   //Test case b: Should return a 400 status code with bad request message when failing ajv validation
   it('Should return a 400 status code with bad request message when failing ajv validation', async() => {
     const res = await request(app).post('/api/users/harry@hogwarts.edu/verify-security-question').send({
-      securityQuestions: [
-        {question: "What is your pet's name?", answer: 'Hedwig'},
-        {question: "What is your favorite book?", answer: 'Quidditch Through the Ages'},
-
-      ],
       newPassword: 'password'
     });
 

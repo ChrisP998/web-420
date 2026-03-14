@@ -104,23 +104,23 @@ app.get('/api/books/:id', async(req, res, next) => {
 app.post('/api/login', async(req, res, next) => {
   console.log('Request body:', req.body);
   try {
-    const user = req.body;
+    const {email, password} = req.body;
+
+    const user = await users.findOne({email});
 
     const expectedKeys = ['email', 'password'];
-    const receivedKeys = Object.keys(user);
+    const receivedKeys = Object.keys(req.body);
 
     if(!receivedKeys.every(key => expectedKeys.includes(key)) || receivedKeys.length !== expectedKeys.length) {
       console.error('Bad Request: Missing keys or extra keys', receivedKeys);
       return next(createError(400, 'Bad Request'));
     }
 
-    const hashedPassword = await bcrypt.hash(user.password, 10);
-
-    if(bcrypt.compareSync(req.body.password, hashedPassword)) {
-      res.status(200).send({message: 'Authentication Successful'});
-    } else {
+    if(!user || !(bcrypt.compareSync(password, user.password))) {
       return next(createError(401, 'Unauthorized'));
     }
+
+    res.status(200).send({message: 'Authentication Successful'});
 
   } catch (err) {
     console.error('Error:', err.message);
@@ -130,36 +130,36 @@ app.post('/api/login', async(req, res, next) => {
 
 app.post('/api/users/:email/verify-security-question', async(req, res, next) => {
   try {
-    const {email} = req.params;
-    const {securityQuestions, newPassword} = req.body;
-
-
     const validate = ajv.compile(securityQuestionsSchema);
-    if(!validate(req.body)) {
-      return next(createError(400, 'Bad Request'));
+    const valid = validate(req.body);
+
+    if (!valid) {
+      console.error("Bad Request: Invalid request body", validate.errors);
+      return next(createError(400, "Bad Request"));
     }
 
-    const user = await users.findOne({email: email});
+    const { email } = req.params;
+    const { newPassword, securityQuestions } = req.body;
 
-    if(securityQuestions[0].answer !== user.securityQuestions[0].answer ||
-      securityQuestions[1].answer !== user.securityQuestions[1].answer ||
-      securityQuestions[2].answer !== user.securityQuestions[2].answer) {
-        console.error('Unauthorized: Security questions do not match');
-        return next(createError(201, 'Unauthorized'));
-      }
+    const user = await users.findOne({ email: email });
 
+    const answersMatch = securityQuestions.every((q, index) => {
+      return q.answer === user.securityQuestions[index].answer;
+    });
+
+    if (!answersMatch) {
+      return next(createError(201, 'Unauthorized'));
+    }
 
     const hashedPassword = bcrypt.hashSync(newPassword, 10);
-    user.password = hashedPassword;
 
-    const result = await users.updateOne({email: email}, {$set: {password: hashedPassword}});
-
-    console.log('Result:', result);
-    res.status(200).send({message: 'Security questions successfully answered', user: user});
+    const result = await users.updateOne({ email: email }, {$set: {password: hashedPassword}});
+    console.log("Result: ", result);
+    res.status(200).send({ message: "Security questions successfully answered", user: user});
   } catch (err) {
-    console.error('Error:', err.message);
+    console.error("Error: ", err.message);
     next(err);
-  }
+}
 });
 
 app.delete('/api/books/:id', async(req, res, next) => {
